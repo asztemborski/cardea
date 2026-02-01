@@ -1,0 +1,7 @@
+version: 1
+debug: true
+
+timeouts:
+  readTimeout: "{{ .timeout }}"
+  writeTimeout: "{{ .timeout }}"
+  idleTimeout: "{{ .timeout }}"
