@@ -19,7 +19,7 @@ var rootCommand = &cli.Command{
 }
 
 func Execute(ctx context.Context, args []string) {
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 
 	if err := rootCommand.Run(ctx, args); err != nil {
 		log.Fatal().Err(err).Msg("failed to execute command")

@@ -3,6 +3,9 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/asztemborski/cardea/internal/config"
 	"github.com/rs/zerolog/log"
@@ -35,7 +38,27 @@ var runCommand = &cli.Command{
 }
 
 func runCommandAction(ctx context.Context, cmd *cli.Command) error {
-	cfg, err := config.NewLoader(cmd.String(configRoot), config.WithVarsDir(cmd.String(varsDir))).Load()
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	go func() {
+		select {
+		case sig := <-sigs:
+			log.Info().Stringer("sig", sig).Msg("signal intercepted")
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+
+	loader := config.NewLoader(
+		cmd.String(configRoot),
+		config.WithVarsDir(cmd.String(varsDir)),
+	)
+
+	cfg, err := loader.Load()
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to load config")
 	}

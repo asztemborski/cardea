@@ -26,9 +26,7 @@ const (
 
 var supportedExts = []string{".yaml", ".yml", ".json", ".toml"}
 
-var (
-	ErrUnsupportedFileExt = errors.New("unsupported config file extension")
-)
+var ErrUnsupportedFileExt = errors.New("unsupported config file extension")
 
 type loaderOption func(*Loader)
 
@@ -84,12 +82,12 @@ func (l *Loader) Load() (*Config, error) {
 	return &cfg, nil
 }
 
-func (l *Loader) loadFiles(dir string, k *koanf.Koanf, excludeDir string) error {
+func (l *Loader) loadFiles(dir string, k *koanf.Koanf, skipDir string) error {
 	if _, err := fs.Stat(l.fsys, dir); errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
 
-	files, err := collectConfigFiles(l.fsys, dir, excludeDir)
+	files, err := collectConfigFiles(l.fsys, dir, skipDir)
 	if err != nil {
 		return fmt.Errorf("collecting files from %s: %w", dir, err)
 	}
@@ -145,14 +143,20 @@ func (l *Loader) renderTemplate(name string, content []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func collectConfigFiles(fsys fs.FS, dir, excludeDir string) ([]string, error) {
+func collectConfigFiles(fsys fs.FS, dir, skipDir string) ([]string, error) {
 	var files []string
 	err := fs.WalkDir(fsys, dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || !isConfigFile(path) || path == excludeDir {
+		if err != nil {
 			return err
 		}
 
-		files = append(files, path)
+		if d.IsDir() && path == skipDir {
+			return fs.SkipDir
+		}
+
+		if isConfigFile(path) {
+			files = append(files, path)
+		}
 		return nil
 	})
 	if err != nil {
